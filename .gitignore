@@ -1,0 +1,16 @@
+# Binaries
+bin/
+*.exe
+
+# Go build artifacts
+*.out
+
+# Local databases
+*.db
+*.sqlite
+
+# Environment files
+.env
+
+# OS files
+.DS_Store

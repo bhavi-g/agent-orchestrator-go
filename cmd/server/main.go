@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"agent-orchestrator/config"
+	"agent-orchestrator/storage/sqlite"
 )
 
 func main() {
@@ -13,6 +14,13 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	repo := sqlite.New(cfg.Storage.SQLitePath)
+
+	if err := repo.Open(); err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer repo.Close()
+
 	fmt.Println("Agent Orchestrator starting...")
-	fmt.Printf("Loaded config: %+v\n", cfg)
+	fmt.Println("SQLite storage initialized")
 }

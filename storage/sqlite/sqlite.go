@@ -23,14 +23,22 @@ func (r *SQLiteRepository) Open() error {
 		return err
 	}
 
-	// Force connection to verify DB and create file
 	if err := db.Ping(); err != nil {
+		return err
+	}
+
+	if _, err := db.Exec(agentRunTableSQL()); err != nil {
+		return err
+	}
+
+	if _, err := db.Exec(agentStepTableSQL()); err != nil {
 		return err
 	}
 
 	r.DB = db
 	return nil
 }
+
 
 
 func (r *SQLiteRepository) Close() error {

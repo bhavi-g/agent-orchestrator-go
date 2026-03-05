@@ -9,6 +9,7 @@ import (
 	"agent-orchestrator/orchestrator"
 	"agent-orchestrator/planner"
 	"agent-orchestrator/storage/sqlite"
+	"agent-orchestrator/tools"
 )
 
 func main() {
@@ -24,13 +25,17 @@ func main() {
 	defer repo.Close()
 
 	// ---- Orchestrator wiring ONLY (no execution) ----
-
 	pl := planner.NewDummyPlanner()
 
 	agentRegistry := agent.NewRegistry()
 	agentRegistry.Register("agent.echo", agent.NewEchoAgent())
 
-	engine := orchestrator.NewEngine(pl, agentRegistry)
+	// Tools wiring
+	toolRegistry := tools.NewRegistry()
+	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
+
+	// Engine wiring
+	engine := orchestrator.NewEngine(pl, agentRegistry, toolExecutor, nil)
 	_ = engine // intentionally unused for now
 
 	fmt.Println("Agent Orchestrator starting...")

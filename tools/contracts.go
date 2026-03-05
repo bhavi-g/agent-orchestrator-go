@@ -20,25 +20,23 @@ type Tool interface {
 }
 
 // Spec describes the contract of a tool.
-// Keep this lightweight for now; richer schemas can be added later.
 type Spec struct {
-	Name        string            // must match Tool.Name()
+	Name        string
 	Description string
-	Input       map[string]Field  // field name -> field description
-	Output      map[string]Field  // field name -> field description
+	Input       map[string]Field
+	Output      map[string]Field
 }
 
 type Field struct {
-	Type        string // e.g. "string", "number", "boolean", "object"
+	Type        string
 	Description string
 	Required    bool
 }
 
 // Call is a single tool invocation request.
 type Call struct {
-	ToolName string         // required
-	Args     map[string]any // required; validated by tool (and optionally by a validator layer later)
-	// TraceID etc can be added later if telemetry needs it, but avoid now.
+	ToolName string
+	Args     map[string]any
 }
 
 // Result is a single tool invocation response.
@@ -47,14 +45,12 @@ type Result struct {
 	Data     map[string]any
 }
 
-// Common, stable errors for deterministic behavior and testability.
 var (
 	ErrToolNotFound = errors.New("tool not found")
 	ErrInvalidArgs  = errors.New("invalid tool args")
 	ErrToolFailed   = errors.New("tool execution failed")
 )
 
-// Wrap helpers so callers can use errors.Is(err, ErrInvalidArgs), etc.
 func InvalidArgsf(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalidArgs, fmt.Sprintf(format, a...))
 }

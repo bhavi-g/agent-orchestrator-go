@@ -2,11 +2,15 @@ package planner
 
 import "context"
 
+type PlanStep struct {
+    AgentID string
+}
+
 type Plan struct {
-	AgentID string
-	TaskID  string
+    TaskID string
+    Steps  []PlanStep
 }
 
 type Planner interface {
-	CreatePlan(ctx context.Context, taskID string) (*Plan, error)
+    CreatePlan(ctx context.Context, taskID string) (*Plan, error)
 }

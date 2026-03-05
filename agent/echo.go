@@ -1,6 +1,11 @@
 package agent
 
-import "context"
+import (
+	"context"
+
+	"agent-orchestrator/tools"
+)
+
 
 type EchoAgent struct{}
 
@@ -33,9 +38,27 @@ func (a *EchoAgent) RunWithContext(
 	rtx RuntimeContext,
 ) (*Result, error) {
 
-	return &Result{
-		Output: map[string]any{
-			"echo": rtx.Input,
-		},
-	}, nil
+	output := map[string]any{
+		"echo": rtx.Input,
+	}
+
+	// Optional tool usage (Phase 4 behavior)
+	useTool, _ := rtx.Input["use_tool"].(bool)
+	msg, _ := rtx.Input["msg"].(string)
+
+	if useTool && rtx.Tools != nil {
+		res, err := rtx.Tools.Execute(ctx, tools.Call{
+			ToolName: "uppercase",
+			Args: map[string]any{
+				"text": msg,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		output["upper"] = res.Data["text"]
+	}
+
+	return &Result{Output: output}, nil
 }

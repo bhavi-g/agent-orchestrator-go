@@ -59,7 +59,7 @@ func (r *AgentRunSQLiteRepository) GetByID(runID string) (*agent.AgentRun, error
 
 	if err != nil {
 		return nil, err
-	}
+	} 
 
 	return &run, nil
 }

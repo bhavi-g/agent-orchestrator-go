@@ -24,6 +24,10 @@ func main() {
 	}
 	defer repo.Close()
 
+	// SQLite-backed run/step repositories
+	runRepo := sqlite.NewAgentRunRepository(repo.DB)
+	stepRepo := sqlite.NewAgentStepRepository(repo.DB)
+
 	// ---- Orchestrator wiring ONLY (no execution) ----
 	pl := planner.NewDummyPlanner()
 
@@ -35,7 +39,14 @@ func main() {
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
 	// Engine wiring
-	engine := orchestrator.NewEngine(pl, agentRegistry, toolExecutor, nil)
+	engine := orchestrator.NewEngine(
+		pl,
+		agentRegistry,
+		toolExecutor,
+		nil,
+		runRepo,
+		stepRepo,
+	)
 	_ = engine // intentionally unused for now
 
 	fmt.Println("Agent Orchestrator starting...")

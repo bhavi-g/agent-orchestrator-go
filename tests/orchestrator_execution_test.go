@@ -21,7 +21,7 @@ func TestEngineExecute(t *testing.T) {
 	toolRegistry := tools.NewRegistry()
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
-	engine := orchestrator.NewEngine(pl, reg, toolExecutor, nil)
+	engine := orchestrator.NewEngine(pl, reg, toolExecutor, nil, nil, nil)
 
 	result, err := engine.Execute(
 		context.Background(),
@@ -88,7 +88,7 @@ func TestEngineExecute_WithTool(t *testing.T) {
 	toolRegistry.Register(uppercaseTool{})
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
-	engine := orchestrator.NewEngine(pl, reg, toolExecutor, nil)
+	engine := orchestrator.NewEngine(pl, reg, toolExecutor, nil, nil, nil)
 
 	result, err := engine.Execute(
 		context.Background(),
@@ -135,7 +135,7 @@ func TestEngineExecute_WithValidationFailure(t *testing.T) {
 	toolRegistry := tools.NewRegistry()
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
-	engine := orchestrator.NewEngine(pl, reg, toolExecutor, failingValidator{})
+	engine := orchestrator.NewEngine(pl, reg, toolExecutor, failingValidator{}, nil, nil)
 
 	result, err := engine.Execute(
 		context.Background(),

@@ -3,21 +3,24 @@ package orchestrator
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"agent-orchestrator/agent"
+	"agent-orchestrator/failure"
 	"agent-orchestrator/planner"
+	"agent-orchestrator/repair"
 	"agent-orchestrator/tools"
 )
 
 type Engine struct {
-	planner   planner.Planner
-	agents    *agent.Registry
-	tools     tools.Executor
-	validator Validator
-	runs      RunRepository
-	steps     StepRepository
+	planner    planner.Planner
+	agents     *agent.Registry
+	tools      tools.Executor
+	validator  Validator
+	runs       RunRepository
+	steps      StepRepository
+	repairEng  *repair.Engine
+	classifier *failure.Classifier
 }
 
 func NewEngine(
@@ -27,14 +30,17 @@ func NewEngine(
 	validator Validator,
 	runs RunRepository,
 	steps StepRepository,
+	repairEng *repair.Engine,
 ) *Engine {
 	return &Engine{
-		planner:   planner,
-		agents:    agents,
-		tools:     tools,
-		validator: validator,
-		runs:      runs,
-		steps:     steps,
+		planner:    planner,
+		agents:     agents,
+		tools:      tools,
+		validator:  validator,
+		runs:       runs,
+		steps:      steps,
+		repairEng:  repairEng,
+		classifier: failure.NewClassifier(),
 	}
 }
 
@@ -117,7 +123,10 @@ func (e *Engine) Execute(
 
 	var finalOutput map[string]any
 
-	// 3. Execute plan steps sequentially
+	// Initialize step attempt tracker
+	tracker := newStepAttemptTracker()
+
+	// 3. Execute plan steps sequentially with retry
 	for i, step := range plan.Steps {
 		run.CurrentStepIndex = i
 		if e.runs != nil {
@@ -126,29 +135,13 @@ func (e *Engine) Execute(
 			}
 		}
 
-		stepStart := time.Now()
-
-		agt, err := e.agents.Get(step.AgentID)
+		// Execute step with automatic retry on failure
+		output, err := e.executeStepWithRetry(ctx, execCtx, step, i, run, tracker)
 		if err != nil {
 			now := time.Now()
 			state.Status = StatusFailed
 			state.EndedAt = &now
 			state.Error = err.Error()
-
-			stepRecord := &agent.AgentStep{
-				StepID:     fmt.Sprintf("%s-step-%d", req.RunID, i),
-				RunID:      req.RunID,
-				Type:       agent.StepPlan,
-				Status:     agent.StepFailed,
-				Input:      fmt.Sprintf("%v", req.Input),
-				Output:     err.Error(),
-				StartedAt:  stepStart,
-				FinishedAt: &now,
-			}
-
-			if e.steps != nil {
-				_ = e.steps.Create(stepRecord)
-			}
 
 			run.Status = agent.AgentRunFailed
 			run.CompletedAt = &now
@@ -163,101 +156,11 @@ func (e *Engine) Execute(
 			}, nil
 		}
 
-		result, err := runAgent(ctx, agt, *execCtx)
-		if err != nil {
-			now := time.Now()
-			state.Status = StatusFailed
-			state.EndedAt = &now
-			state.Error = err.Error()
+		finalOutput = output
 
-			stepRecord := &agent.AgentStep{
-				StepID:     fmt.Sprintf("%s-step-%d", req.RunID, i),
-				RunID:      req.RunID,
-				Type:       agent.StepPlan,
-				Status:     agent.StepFailed,
-				Input:      fmt.Sprintf("%v", req.Input),
-				Output:     err.Error(),
-				StartedAt:  stepStart,
-				FinishedAt: &now,
-			}
-
-			if e.steps != nil {
-				_ = e.steps.Create(stepRecord)
-			}
-
-			run.Status = agent.AgentRunFailed
-			run.CompletedAt = &now
-			if e.runs != nil {
-				_ = e.runs.Update(run)
-			}
-
-			return &ExecutionResult{
-				RunID:  req.RunID,
-				Status: StatusFailed,
-				Err:    err,
-			}, nil
-		}
-
-		finalOutput = result.Output
-
-		// --- Persist step output into shared execution context ---
-		for k, v := range result.Output {
+		// Store step output in execution context
+		for k, v := range output {
 			execCtx.Vars[k] = v
-		}
-
-		if e.validator != nil {
-			if err := e.validator.Validate(step.AgentID, result.Output); err != nil {
-				now := time.Now()
-				state.Status = StatusFailed
-				state.EndedAt = &now
-				state.Error = err.Error()
-
-				stepRecord := &agent.AgentStep{
-					StepID:     fmt.Sprintf("%s-step-%d", req.RunID, i),
-					RunID:      req.RunID,
-					Type:       agent.StepValidation,
-					Status:     agent.StepFailed,
-					Input:      fmt.Sprintf("%v", req.Input),
-					Output:     err.Error(),
-					StartedAt:  stepStart,
-					FinishedAt: &now,
-				}
-
-				if e.steps != nil {
-					_ = e.steps.Create(stepRecord)
-				}
-
-				run.Status = agent.AgentRunFailed
-				run.CompletedAt = &now
-				if e.runs != nil {
-					_ = e.runs.Update(run)
-				}
-
-				return &ExecutionResult{
-					RunID:  req.RunID,
-					Status: StatusFailed,
-					Err:    err,
-				}, nil
-			}
-		}
-
-		// Step succeeded → persist it
-		finished := time.Now()
-		stepRecord := &agent.AgentStep{
-			StepID:     fmt.Sprintf("%s-step-%d", req.RunID, i),
-			RunID:      req.RunID,
-			Type:       agent.StepPlan,
-			Status:     agent.StepSucceeded,
-			Input:      fmt.Sprintf("%v", req.Input),
-			Output:     fmt.Sprintf("%v", result.Output),
-			StartedAt:  stepStart,
-			FinishedAt: &finished,
-		}
-
-		if e.steps != nil {
-			if err := e.steps.Create(stepRecord); err != nil {
-				return nil, err
-			}
 		}
 	}
 

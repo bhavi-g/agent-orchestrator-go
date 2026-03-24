@@ -208,8 +208,7 @@ func (e *Engine) applyRepairActions(plan *repair.RepairPlan, currentInput *map[s
 			// If replacement not available, continue to next action
 		
 		case repair.Replan:
-			// Replanning not supported in step-level retry
-			// This should be handled at engine level
+			// Signal the engine-level loop to replan
 			return false
 		
 		case repair.Abort:

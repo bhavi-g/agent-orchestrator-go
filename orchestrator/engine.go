@@ -14,6 +14,7 @@ import (
 
 type Engine struct {
 	planner    planner.Planner
+	replanner  planner.Replanner
 	agents     *agent.Registry
 	tools      tools.Executor
 	validator  Validator
@@ -21,10 +22,11 @@ type Engine struct {
 	steps      StepRepository
 	repairEng  *repair.Engine
 	classifier *failure.Classifier
+	maxReplans int
 }
 
 func NewEngine(
-	planner planner.Planner,
+	p planner.Planner,
 	agents *agent.Registry,
 	tools tools.Executor,
 	validator Validator,
@@ -32,8 +34,15 @@ func NewEngine(
 	steps StepRepository,
 	repairEng *repair.Engine,
 ) *Engine {
+	// If planner also implements Replanner, use it
+	var rp planner.Replanner
+	if r, ok := p.(planner.Replanner); ok {
+		rp = r
+	}
+
 	return &Engine{
-		planner:    planner,
+		planner:    p,
+		replanner:  rp,
 		agents:     agents,
 		tools:      tools,
 		validator:  validator,
@@ -41,7 +50,18 @@ func NewEngine(
 		steps:      steps,
 		repairEng:  repairEng,
 		classifier: failure.NewClassifier(),
+		maxReplans: 3,
 	}
+}
+
+// SetReplanner explicitly sets the replanner (if different from planner).
+func (e *Engine) SetReplanner(rp planner.Replanner) {
+	e.replanner = rp
+}
+
+// SetMaxReplans configures the maximum number of replans per execution.
+func (e *Engine) SetMaxReplans(n int) {
+	e.maxReplans = n
 }
 
 func (e *Engine) Execute(
@@ -126,9 +146,16 @@ func (e *Engine) Execute(
 	// Initialize step attempt tracker
 	tracker := newStepAttemptTracker()
 
-	// 3. Execute plan steps sequentially with retry
-	for i, step := range plan.Steps {
-		run.CurrentStepIndex = i
+	// Track completed steps (for replan context)
+	var completedSteps []planner.CompletedStep
+	replanCount := 0
+
+	// 3. Execute plan steps sequentially with retry + replan
+	i := 0
+	for i < len(plan.Steps) {
+		step := plan.Steps[i]
+
+		run.CurrentStepIndex = i + len(completedSteps)
 		if e.runs != nil {
 			if err := e.runs.Update(run); err != nil {
 				return nil, err
@@ -136,12 +163,47 @@ func (e *Engine) Execute(
 		}
 
 		// Execute step with automatic retry on failure
-		output, err := e.executeStepWithRetry(ctx, execCtx, step, i, run, tracker)
-		if err != nil {
+		output, stepErr := e.executeStepWithRetry(ctx, execCtx, step, i, run, tracker)
+		if stepErr != nil {
+			// Check if we should replan instead of failing
+			if e.replanner != nil && replanCount < e.maxReplans {
+				failureType := string(e.classifier.Classify(stepErr))
+
+				rctx := planner.ReplanContext{
+					TaskID:          req.TaskID,
+					OriginalPlan:    plan,
+					FailedStepIndex: i,
+					FailedAgentID:   step.AgentID,
+					FailureError:    stepErr.Error(),
+					FailureType:     failureType,
+					CompletedSteps:  completedSteps,
+					Vars:            execCtx.Vars,
+					Attempt:         replanCount + 1,
+					MaxReplans:      e.maxReplans,
+				}
+
+				newPlan, replanErr := e.replanner.Replan(ctx, rctx)
+				if replanErr == nil && newPlan != nil && len(newPlan.Steps) > 0 {
+					replanCount++
+					plan = newPlan
+					tracker = newStepAttemptTracker()
+					i = 0
+
+					// Update run with new plan info
+					run.MaxSteps = len(completedSteps) + len(newPlan.Steps)
+					if e.runs != nil {
+						_ = e.runs.Update(run)
+					}
+
+					continue
+				}
+			}
+
+			// No replan available — fail
 			now := time.Now()
 			state.Status = StatusFailed
 			state.EndedAt = &now
-			state.Error = err.Error()
+			state.Error = stepErr.Error()
 
 			run.Status = agent.AgentRunFailed
 			run.CompletedAt = &now
@@ -152,16 +214,25 @@ func (e *Engine) Execute(
 			return &ExecutionResult{
 				RunID:  req.RunID,
 				Status: StatusFailed,
-				Err:    err,
+				Err:    stepErr,
 			}, nil
 		}
 
 		finalOutput = output
 
+		// Track completed step
+		completedSteps = append(completedSteps, planner.CompletedStep{
+			StepIndex: i,
+			AgentID:   step.AgentID,
+			Output:    output,
+		})
+
 		// Store step output in execution context
 		for k, v := range output {
 			execCtx.Vars[k] = v
 		}
+
+		i++
 	}
 
 	// Success transition

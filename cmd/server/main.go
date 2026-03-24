@@ -8,6 +8,7 @@ import (
 	"agent-orchestrator/config"
 	"agent-orchestrator/orchestrator"
 	"agent-orchestrator/planner"
+	"agent-orchestrator/repair"
 	"agent-orchestrator/storage/sqlite"
 	"agent-orchestrator/tools"
 )
@@ -38,6 +39,12 @@ func main() {
 	toolRegistry := tools.NewRegistry()
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
+	// Repair engine wiring (optional - can be nil)
+	// For now, we'll start without repair capability
+	// To enable: repairStrategy := repair.NewSimpleRetryStrategy()
+	//            repairEngine := repair.NewEngine(repairStrategy, 3)
+	var repairEngine *repair.Engine = nil
+
 	// Engine wiring
 	engine := orchestrator.NewEngine(
 		pl,
@@ -46,6 +53,7 @@ func main() {
 		nil,
 		runRepo,
 		stepRepo,
+		repairEngine,
 	)
 	_ = engine // intentionally unused for now
 

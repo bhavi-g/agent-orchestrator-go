@@ -82,6 +82,26 @@ type ToolCallResponse struct {
 
 // --- Handlers ----------------------------------------------------------------
 
+// ListRuns handles GET /runs.
+func (h *RunHandler) ListRuns(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	runs, err := h.runs.List()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list runs")
+		return
+	}
+
+	resp := make([]RunResponse, len(runs))
+	for i, run := range runs {
+		resp[i] = toRunResponse(run)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // CreateRun handles POST /runs.
 func (h *RunHandler) CreateRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

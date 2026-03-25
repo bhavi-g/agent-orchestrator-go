@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 	"agent-orchestrator/repair"
 	"agent-orchestrator/storage/sqlite"
 	"agent-orchestrator/tools"
+	"agent-orchestrator/web"
 )
 
 func main() {
@@ -74,6 +76,10 @@ func main() {
 	metricsEval := orchestrator.NewMetricsEvaluator(runRepo, stepRepo, toolCallRepo)
 	metricsHandler := handlers.NewMetricsHandler(metricsEval, runRepo)
 	router := api.NewRouter(runHandler, metricsHandler)
+
+	// Serve embedded web dashboard at /
+	staticFS, _ := fs.Sub(web.Static, "static")
+	router.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("Agent Orchestrator listening on %s", addr)

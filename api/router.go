@@ -16,7 +16,11 @@ func NewRouter(rh *handlers.RunHandler, mh ...*handlers.MetricsHandler) *http.Se
 	// GET  /runs/<id>/steps
 	mux.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/runs" || r.URL.Path == "/runs/" {
-			rh.CreateRun(w, r)
+			if r.Method == http.MethodGet {
+				rh.ListRuns(w, r)
+			} else {
+				rh.CreateRun(w, r)
+			}
 			return
 		}
 		http.NotFound(w, r)

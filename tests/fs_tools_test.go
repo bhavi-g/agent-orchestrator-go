@@ -57,13 +57,23 @@ func TestReadFileTool(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects absolute path", func(t *testing.T) {
-		_, err := tool.Execute(context.Background(), tools.Call{
+	t.Run("allows absolute path to existing file", func(t *testing.T) {
+		// Absolute paths are now allowed — this is a local dev tool and the user
+		// already has filesystem access. The old rejection was overly restrictive.
+		tmpFile, _ := os.CreateTemp("", "mcp-test-*.txt")
+		tmpFile.WriteString("test content")
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		res, err := tool.Execute(context.Background(), tools.Call{
 			ToolName: "fs.read_file",
-			Args:     map[string]any{"path": "/etc/passwd"},
+			Args:     map[string]any{"path": tmpFile.Name()},
 		})
-		if err == nil {
-			t.Fatal("expected error for absolute path")
+		if err != nil {
+			t.Fatalf("expected absolute path to work, got error: %v", err)
+		}
+		if res.Data["content"] != "test content" {
+			t.Fatalf("unexpected content: %v", res.Data["content"])
 		}
 	})
 }

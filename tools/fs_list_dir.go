@@ -77,7 +77,18 @@ func (t *ListDirTool) Execute(ctx context.Context, call Call) (Result, error) {
 
 func (t *ListDirTool) safePath(rel string) (string, error) {
 	cleaned := filepath.Clean(rel)
-	if filepath.IsAbs(cleaned) || strings.HasPrefix(cleaned, "..") {
+	// Allow absolute paths — this is a local dev tool; user already has filesystem access.
+	if filepath.IsAbs(cleaned) {
+		info, err := os.Stat(cleaned)
+		if err != nil {
+			return "", ToolFailedf("path not found: %s", rel)
+		}
+		if !info.IsDir() {
+			return "", InvalidArgsf("%s is not a directory", rel)
+		}
+		return cleaned, nil
+	}
+	if strings.HasPrefix(cleaned, "..") {
 		return "", InvalidArgsf("path must be relative and within root directory")
 	}
 	abs := filepath.Join(t.rootDir, cleaned)

@@ -379,14 +379,16 @@ async function renderRunDetail(app, id) {
    REPORT RENDERER
    ================================================================ */
 function renderReport(r) {
-    const evidence = r.evidence || [];
-    const nextSteps = r.next_steps || [];
+    const evidence = r.supporting_evidence || [];
+    const nextSteps = r.suggested_next_steps || [];
+    const confidence = r.confidence_level || '';
+    const rootCause = r.suspected_root_cause || '';
 
     return `<div class="report-grid">
-        ${r.confidence ? `<div class="confidence-hero">
+        ${confidence ? `<div class="confidence-hero">
             <span style="color:var(--text-secondary); font-size:0.9rem;">Confidence:</span>
-            <span class="conf-badge badge ${r.confidence.toLowerCase() === 'high' ? 'badge-success' : r.confidence.toLowerCase() === 'medium' ? 'badge-warning' : 'badge-error'}" style="font-size:0.95rem; padding:6px 20px;">
-                ${esc(r.confidence)}
+            <span class="conf-badge badge ${confidence.toLowerCase() === 'high' ? 'badge-success' : confidence.toLowerCase() === 'medium' ? 'badge-warning' : 'badge-error'}" style="font-size:0.95rem; padding:6px 20px;">
+                ${esc(confidence)}
             </span>
         </div>` : ''}
 
@@ -395,17 +397,17 @@ function renderReport(r) {
             <div class="section-body">${esc(r.error_summary)}</div>
         </div>` : ''}
 
-        ${r.root_cause ? `<div class="report-section">
+        ${rootCause && rootCause !== 'N/A — no issues found.' ? `<div class="report-section">
             <div class="section-label">Root Cause</div>
-            <div class="section-body">${esc(r.root_cause)}</div>
+            <div class="section-body">${esc(rootCause)}</div>
         </div>` : ''}
 
         ${evidence.length ? `<div class="report-section">
             <div class="section-label">Evidence (${evidence.length})</div>
             <div class="evidence-list">
                 ${evidence.map(e => `<div class="evidence-item">
-                    <div class="evidence-file">${esc(e.file || '?')}${e.line ? ` <span class="line-num">:${e.line}</span>` : ''}</div>
-                    <div class="evidence-text">${esc(e.content || e.text || '')}</div>
+                    <div class="evidence-file">${esc(e.file || '?')}${e.line_number ? ` <span class="line-num">:${e.line_number}</span>` : ''}</div>
+                    <div class="evidence-text">${esc(e.text || '')}</div>
                 </div>`).join('')}
             </div>
         </div>` : ''}

@@ -78,3 +78,37 @@ func (r *AgentRunSQLiteRepository) Update(run *agent.AgentRun) error {
 
 	return err
 }
+
+func (r *AgentRunSQLiteRepository) List() ([]*agent.AgentRun, error) {
+	rows, err := r.DB.Query(`
+		SELECT run_id, goal, status, current_step_index,
+		       prompt_version, model_version, max_steps,
+		       created_at, completed_at
+		FROM agent_runs
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var runs []*agent.AgentRun
+	for rows.Next() {
+		var run agent.AgentRun
+		if err := rows.Scan(
+			&run.RunID,
+			&run.Goal,
+			&run.Status,
+			&run.CurrentStepIndex,
+			&run.PromptVersion,
+			&run.ModelVersion,
+			&run.MaxSteps,
+			&run.CreatedAt,
+			&run.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		runs = append(runs, &run)
+	}
+	return runs, nil
+}

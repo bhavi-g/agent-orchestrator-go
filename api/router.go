@@ -8,7 +8,7 @@ import (
 )
 
 // NewRouter builds an http.ServeMux with all API routes.
-func NewRouter(rh *handlers.RunHandler) *http.ServeMux {
+func NewRouter(rh *handlers.RunHandler, mh ...*handlers.MetricsHandler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// POST /runs
@@ -44,6 +44,12 @@ func NewRouter(rh *handlers.RunHandler) *http.ServeMux {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// Metrics: GET /metrics, GET /metrics/<runID>
+	if len(mh) > 0 && mh[0] != nil {
+		mux.HandleFunc("/metrics", mh[0].GetMetrics)
+		mux.HandleFunc("/metrics/", mh[0].GetMetrics)
+	}
 
 	return mux
 }

@@ -44,6 +44,14 @@ func (r *memRunRepo) Update(run *agent.AgentRun) error {
 	return nil
 }
 
+func (r *memRunRepo) List() ([]*agent.AgentRun, error) {
+	var result []*agent.AgentRun
+	for _, run := range r.runs {
+		result = append(result, run)
+	}
+	return result, nil
+}
+
 type notFoundError struct{ id string }
 
 func (e *notFoundError) Error() string { return "not found: " + e.id }

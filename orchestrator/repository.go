@@ -6,6 +6,7 @@ type RunRepository interface {
 	Create(run *agent.AgentRun) error
 	GetByID(runID string) (*agent.AgentRun, error)
 	Update(run *agent.AgentRun) error
+	List() ([]*agent.AgentRun, error)
 }
 
 type StepRepository interface {

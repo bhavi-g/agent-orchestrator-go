@@ -71,7 +71,9 @@ func main() {
 
 	// ---- HTTP Server ----
 	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(runHandler)
+	metricsEval := orchestrator.NewMetricsEvaluator(runRepo, stepRepo, toolCallRepo)
+	metricsHandler := handlers.NewMetricsHandler(metricsEval, runRepo)
+	router := api.NewRouter(runHandler, metricsHandler)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("Agent Orchestrator listening on %s", addr)

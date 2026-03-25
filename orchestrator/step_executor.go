@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -281,13 +282,15 @@ func (e *Engine) recordSuccessfulStep(runID string, stepIndex int, startedAt tim
 	}
 
 	now := time.Now()
+	inputJSON, _ := json.Marshal(input)
+	outputJSON, _ := json.Marshal(output)
 	stepRecord := &agent.AgentStep{
 		StepID:     fmt.Sprintf("%s-step-%d-attempt-%d", runID, stepIndex, attempt),
 		RunID:      runID,
 		Type:       agent.StepPlan,
 		Status:     agent.StepSucceeded,
-		Input:      fmt.Sprintf("%v", input),
-		Output:     fmt.Sprintf("%v", output),
+		Input:      string(inputJSON),
+		Output:     string(outputJSON),
 		StartedAt:  startedAt,
 		FinishedAt: &now,
 	}

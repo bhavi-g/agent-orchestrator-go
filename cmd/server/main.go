@@ -38,9 +38,13 @@ func main() {
 
 	agentRegistry := agent.NewRegistry()
 	agentRegistry.Register("agent.echo", agent.NewEchoAgent())
+	agentRegistry.Register("agent.log_reader", agent.NewLogReaderAgent())
 
-	// Tools wiring
+	// Tools wiring — root directory defaults to current working directory
 	toolRegistry := tools.NewRegistry()
+	toolRegistry.Register(tools.NewReadFileTool("."))
+	toolRegistry.Register(tools.NewListDirTool("."))
+	toolRegistry.Register(tools.NewGrepFileTool("."))
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
 	// Repair engine wiring (optional)

@@ -52,12 +52,16 @@ func main() {
 	repairStrategy := repair.NewSimpleRetryStrategy()
 	repairEngine := repair.NewEngine(repairStrategy, 3)
 
-	// Engine wiring with report validator
+	// Engine wiring with report + grounding validators
+	validator := orchestrator.NewCompositeValidator(
+		orchestrator.NewReportValidator(),
+		orchestrator.NewGroundingValidator(),
+	)
 	engine := orchestrator.NewEngine(
 		pl,
 		agentRegistry,
 		toolExecutor,
-		orchestrator.NewReportValidator(),
+		validator,
 		runRepo,
 		stepRepo,
 		repairEngine,

@@ -65,7 +65,8 @@ func (e *Engine) executeStepWithRetry(
 	currentInput := execCtx.Request.Input
 	currentAgentID := step.AgentID
 
-	// Wrap the tool executor with persistence if a ToolCallRecorder is set.
+	// Layer per-step persistence on top of the run-level tool executor
+	// (which already includes the shared ToolCallCollector).
 	stepExecCtx := *execCtx
 	if e.toolRecorder != nil && execCtx.Tools != nil {
 		stepID := fmt.Sprintf("%s-step-%d", run.RunID, stepIndex)

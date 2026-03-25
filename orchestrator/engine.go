@@ -80,6 +80,25 @@ func (e *Engine) SetToolCallRepository(repo tools.ToolCallRecorder) {
 	e.toolRecorder = repo
 }
 
+// groundingValidator returns the GroundingValidator if it's part of the
+// current validator chain.
+func (e *Engine) groundingValidator() (*GroundingValidator, bool) {
+	if e.validator == nil {
+		return nil, false
+	}
+	if gv, ok := e.validator.(*GroundingValidator); ok {
+		return gv, true
+	}
+	if cv, ok := e.validator.(*CompositeValidator); ok {
+		for _, v := range cv.validators {
+			if gv, ok := v.(*GroundingValidator); ok {
+				return gv, true
+			}
+		}
+	}
+	return nil, false
+}
+
 func (e *Engine) Execute(
 	ctx context.Context,
 	req ExecutionRequest,
@@ -120,6 +139,17 @@ func (e *Engine) Execute(
 		Request: req,
 		Tools:   e.tools,
 		Vars:    make(map[string]any),
+	}
+
+	// Wrap the tool executor with a run-level collector so that grounding
+	// validation can cross-reference claims against ALL tool calls in the run.
+	if execCtx.Tools != nil {
+		runCollector := tools.NewToolCallCollector(execCtx.Tools)
+		execCtx.Tools = runCollector
+
+		if gv, ok := e.groundingValidator(); ok {
+			gv.SetCollector(runCollector)
+		}
 	}
 
 	// Move to running

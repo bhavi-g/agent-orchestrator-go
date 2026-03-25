@@ -9,20 +9,22 @@ import (
 	"agent-orchestrator/failure"
 	"agent-orchestrator/planner"
 	"agent-orchestrator/repair"
+	"agent-orchestrator/retry"
 	"agent-orchestrator/tools"
 )
 
 type Engine struct {
-	planner    planner.Planner
-	replanner  planner.Replanner
-	agents     *agent.Registry
-	tools      tools.Executor
-	validator  Validator
-	runs       RunRepository
-	steps      StepRepository
-	repairEng  *repair.Engine
-	classifier *failure.Classifier
-	maxReplans int
+	planner      planner.Planner
+	replanner    planner.Replanner
+	agents       *agent.Registry
+	tools        tools.Executor
+	validator    Validator
+	runs         RunRepository
+	steps        StepRepository
+	repairEng    *repair.Engine
+	classifier   *failure.Classifier
+	maxReplans   int
+	retryPolicy  retry.Policy
 }
 
 func NewEngine(
@@ -41,16 +43,17 @@ func NewEngine(
 	}
 
 	return &Engine{
-		planner:    p,
-		replanner:  rp,
-		agents:     agents,
-		tools:      tools,
-		validator:  validator,
-		runs:       runs,
-		steps:      steps,
-		repairEng:  repairEng,
-		classifier: failure.NewClassifier(),
-		maxReplans: 3,
+		planner:     p,
+		replanner:   rp,
+		agents:      agents,
+		tools:       tools,
+		validator:   validator,
+		runs:        runs,
+		steps:       steps,
+		repairEng:   repairEng,
+		classifier:  failure.NewClassifier(),
+		maxReplans:  3,
+		retryPolicy: retry.DefaultPolicy(),
 	}
 }
 
@@ -62,6 +65,11 @@ func (e *Engine) SetReplanner(rp planner.Replanner) {
 // SetMaxReplans configures the maximum number of replans per execution.
 func (e *Engine) SetMaxReplans(n int) {
 	e.maxReplans = n
+}
+
+// SetRetryPolicy sets the global default retry policy for all steps.
+func (e *Engine) SetRetryPolicy(p retry.Policy) {
+	e.retryPolicy = p
 }
 
 func (e *Engine) Execute(

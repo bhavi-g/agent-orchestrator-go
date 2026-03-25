@@ -9,6 +9,7 @@ import (
 	"agent-orchestrator/failure"
 	"agent-orchestrator/planner"
 	"agent-orchestrator/repair"
+	"agent-orchestrator/retry"
 )
 
 // stepAttemptTracker tracks attempts for each step
@@ -31,6 +32,15 @@ func (t *stepAttemptTracker) getAttempt(stepIndex int) int {
 	return t.attempts[stepIndex]
 }
 
+// resolveRetryPolicy returns the effective retry policy for a step,
+// merging the per-step override (if any) with the engine-level default.
+func (e *Engine) resolveRetryPolicy(step planner.PlanStep) retry.Policy {
+	if step.RetryPolicy != nil {
+		return step.RetryPolicy.Merge(e.retryPolicy)
+	}
+	return e.retryPolicy
+}
+
 // executeStepWithRetry executes a single step with retry logic
 func (e *Engine) executeStepWithRetry(
 	ctx context.Context,
@@ -41,6 +51,9 @@ func (e *Engine) executeStepWithRetry(
 	tracker *stepAttemptTracker,
 ) (map[string]any, error) {
 	
+	// Resolve effective retry policy for this step
+	policy := e.resolveRetryPolicy(step)
+
 	// Current input for this step (may be modified by repair)
 	currentInput := execCtx.Request.Input
 	currentAgentID := step.AgentID
@@ -48,9 +61,14 @@ func (e *Engine) executeStepWithRetry(
 	for {
 		attemptNum := tracker.incrementAttempt(stepIndex)
 		
-		// Apply retry delay if configured
-		if attemptNum > 1 && e.repairEng != nil {
-			delay := e.repairEng.GetRetryDelay(attemptNum)
+		// Enforce max attempts from the retry policy
+		if attemptNum > 1 && !policy.ShouldRetry(attemptNum-1) {
+			return nil, fmt.Errorf("step %d: max retry attempts (%d) exceeded", stepIndex, policy.MaxAttempts)
+		}
+
+		// Apply retry delay from the policy
+		if attemptNum > 1 {
+			delay := policy.Delay(attemptNum)
 			if delay > 0 {
 				time.Sleep(delay)
 			}

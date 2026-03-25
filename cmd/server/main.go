@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"agent-orchestrator/agent"
+	"agent-orchestrator/api"
+	"agent-orchestrator/api/handlers"
 	"agent-orchestrator/config"
 	"agent-orchestrator/orchestrator"
 	"agent-orchestrator/planner"
@@ -29,7 +32,7 @@ func main() {
 	runRepo := sqlite.NewAgentRunRepository(repo.DB)
 	stepRepo := sqlite.NewAgentStepRepository(repo.DB)
 
-	// ---- Orchestrator wiring ONLY (no execution) ----
+	// ---- Orchestrator wiring ----
 	pl := planner.NewDummyPlanner()
 
 	agentRegistry := agent.NewRegistry()
@@ -39,11 +42,9 @@ func main() {
 	toolRegistry := tools.NewRegistry()
 	toolExecutor := tools.NewRegistryExecutor(toolRegistry)
 
-	// Repair engine wiring (optional - can be nil)
-	// For now, we'll start without repair capability
-	// To enable: repairStrategy := repair.NewSimpleRetryStrategy()
-	//            repairEngine := repair.NewEngine(repairStrategy, 3)
-	var repairEngine *repair.Engine = nil
+	// Repair engine wiring (optional)
+	repairStrategy := repair.NewSimpleRetryStrategy()
+	repairEngine := repair.NewEngine(repairStrategy, 3)
 
 	// Engine wiring
 	engine := orchestrator.NewEngine(
@@ -55,8 +56,14 @@ func main() {
 		stepRepo,
 		repairEngine,
 	)
-	_ = engine // intentionally unused for now
 
-	fmt.Println("Agent Orchestrator starting...")
-	fmt.Println("SQLite storage initialized")
+	// ---- HTTP Server ----
+	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo)
+	router := api.NewRouter(runHandler)
+
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
+	log.Printf("Agent Orchestrator listening on %s", addr)
+	if err := http.ListenAndServe(addr, router); err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 }

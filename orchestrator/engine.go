@@ -134,8 +134,14 @@ func (e *Engine) Execute(
 	}
 
 	if e.runs != nil {
+		// If the record was pre-created by the HTTP handler, this will fail
+		// (duplicate key). That's fine — just look it up instead.
 		if err := e.runs.Create(run); err != nil {
-			return nil, err
+			if existing, lookupErr := e.runs.GetByID(req.RunID); lookupErr == nil {
+				run = existing
+			} else {
+				return nil, err
+			}
 		}
 	}
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -121,11 +122,24 @@ func (h *RunHandler) CreateRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	runID := uuid.New().String()
+	now := time.Now().UTC()
 
-	// Execute asynchronously — the run is created inside Execute,
-	// so we kick it off in a goroutine and return the run ID immediately.
+	// Pre-create the run record so GET /runs/:id works immediately.
+	run := &agent.AgentRun{
+		RunID:     runID,
+		Goal:      req.TaskID,
+		Status:    agent.AgentRunCreated,
+		CreatedAt: now,
+	}
+	if err := h.runs.Create(run); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create run")
+		return
+	}
+
+	// Execute asynchronously — the record already exists, so the engine
+	// will update it in-place rather than re-creating it.
 	go func() {
-		_, _ = h.engine.Execute(r.Context(), orchestrator.ExecutionRequest{
+		_, _ = h.engine.Execute(context.Background(), orchestrator.ExecutionRequest{
 			RunID:  runID,
 			TaskID: req.TaskID,
 			Input:  req.Input,
@@ -137,7 +151,7 @@ func (h *RunHandler) CreateRun(w http.ResponseWriter, r *http.Request) {
 		RunID:     runID,
 		Goal:      req.TaskID,
 		Status:    string(agent.AgentRunCreated),
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: now,
 	})
 }
 

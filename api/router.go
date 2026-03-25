@@ -23,6 +23,10 @@ func NewRouter(rh *handlers.RunHandler) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/runs/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/replay") {
+			rh.ReplayRun(w, r)
+			return
+		}
 		if strings.HasSuffix(r.URL.Path, "/steps") {
 			rh.GetRunSteps(w, r)
 			return

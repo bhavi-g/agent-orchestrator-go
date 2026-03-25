@@ -24,6 +24,7 @@ type Engine struct {
 	runs         RunRepository
 	steps        StepRepository
 	toolRecorder tools.ToolCallRecorder
+	toolCalls    ToolCallRepository
 	repairEng    *repair.Engine
 	classifier   *failure.Classifier
 	maxReplans   int
@@ -78,6 +79,11 @@ func (e *Engine) SetRetryPolicy(p retry.Policy) {
 // SetToolCallRepository enables tool call persistence.
 func (e *Engine) SetToolCallRepository(repo tools.ToolCallRecorder) {
 	e.toolRecorder = repo
+}
+
+// SetToolCallReader enables reading back persisted tool calls for replay.
+func (e *Engine) SetToolCallReader(repo ToolCallRepository) {
+	e.toolCalls = repo
 }
 
 // groundingValidator returns the GroundingValidator if it's part of the
@@ -383,4 +389,85 @@ func (e *Engine) Execute(
 		Output: finalOutput,
 		Err:    nil,
 	}, nil
+}
+
+// Replay re-runs a previously persisted agent run. It loads the stored tool
+// call records and substitutes a ReplayExecutor that returns those outputs
+// instead of invoking real tools. The agents, planner, and validators run
+// exactly as in a normal execution — only the tool layer is replaced.
+func (e *Engine) Replay(
+	ctx context.Context,
+	originalRunID string,
+) (*ExecutionResult, error) {
+	if e.runs == nil {
+		return nil, errors.New("replay: run repository is required")
+	}
+	if e.toolCalls == nil {
+		return nil, errors.New("replay: tool call repository is required")
+	}
+
+	// 1. Load the original run to recover the goal (task ID).
+	origRun, err := e.runs.GetByID(originalRunID)
+	if err != nil {
+		return nil, fmt.Errorf("replay: run %s not found: %w", originalRunID, err)
+	}
+
+	// 2. Load persisted tool call records.
+	agentCalls, err := e.toolCalls.GetByRunID(originalRunID)
+	if err != nil {
+		return nil, fmt.Errorf("replay: failed to load tool calls: %w", err)
+	}
+
+	records := make([]tools.ToolCallRecord, len(agentCalls))
+	for i, tc := range agentCalls {
+		records[i] = tools.ToolCallRecord{
+			ToolCallID: tc.ToolCallID,
+			RunID:      tc.RunID,
+			StepID:     tc.StepID,
+			ToolName:   tc.ToolName,
+			Input:      tc.Input,
+			Output:     tc.Output,
+			Succeeded:  tc.Status == agent.ToolCallSucceeded,
+			StartedAt:  tc.StartedAt,
+		}
+		if tc.FinishedAt != nil {
+			records[i].FinishedAt = *tc.FinishedAt
+		}
+	}
+
+	replayExec, err := tools.NewReplayExecutor(records)
+	if err != nil {
+		return nil, fmt.Errorf("replay: %w", err)
+	}
+
+	// 3. Temporarily swap the engine's tool executor for the replay executor
+	//    and disable tool-call recording (we don't persist replayed calls).
+	origTools := e.tools
+	origRecorder := e.toolRecorder
+	e.tools = replayExec
+	e.toolRecorder = nil
+	defer func() {
+		e.tools = origTools
+		e.toolRecorder = origRecorder
+	}()
+
+	// 4. Execute through the normal pipeline with a new run ID.
+	newRunID := fmt.Sprintf("replay-%s", originalRunID)
+
+	result, err := e.Execute(ctx, ExecutionRequest{
+		RunID:  newRunID,
+		TaskID: origRun.Goal,
+		Input:  nil, // the original input is embedded in the stored tool call outputs
+	})
+
+	// Attach replay metadata.
+	if result != nil {
+		if result.Output == nil {
+			result.Output = make(map[string]any)
+		}
+		result.Output["_replay_source"] = originalRunID
+		result.Output["_replay_unconsumed_calls"] = replayExec.Unconsumed()
+	}
+
+	return result, err
 }

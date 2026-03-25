@@ -222,6 +222,44 @@ func (h *RunHandler) GetRunToolCalls(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// ReplayRun handles POST /runs/:id/replay.
+// It re-executes the original run using stored tool call outputs.
+func (h *RunHandler) ReplayRun(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/runs/")
+	path = strings.TrimSuffix(path, "/replay")
+	runID := path
+	if runID == "" || strings.Contains(runID, "/") {
+		writeError(w, http.StatusBadRequest, "invalid run_id")
+		return
+	}
+
+	result, err := h.engine.Replay(r.Context(), runID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ReplayResponse{
+		RunID:          result.RunID,
+		Status:         string(result.Status),
+		Output:         result.Output,
+		SourceRunID:    runID,
+	})
+}
+
+// ReplayResponse is the JSON representation of a replay result.
+type ReplayResponse struct {
+	RunID       string         `json:"run_id"`
+	Status      string         `json:"status"`
+	Output      map[string]any `json:"output,omitempty"`
+	SourceRunID string         `json:"source_run_id"`
+}
+
 // --- Helpers -----------------------------------------------------------------
 
 func extractRunID(path, prefix string) string {

@@ -67,6 +67,7 @@ func main() {
 		repairEngine,
 	)
 	engine.SetToolCallRepository(toolCallRepo)
+	engine.SetToolCallReader(toolCallRepo)
 
 	// ---- HTTP Server ----
 	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)

@@ -1,0 +1,8 @@
+2024-06-15 15:00:01 INFO  Order service started
+2024-06-15 15:01:00 INFO  Processing order ORD-9001
+2024-06-15 15:01:05 ERROR Database query timeout: SELECT * FROM orders WHERE id = 9001 (30s exceeded)
+2024-06-15 15:01:30 ERROR Database query timeout: INSERT INTO order_items (30s exceeded)
+2024-06-15 15:02:00 ERROR Database query timeout: SELECT * FROM inventory WHERE sku = 'ABC' (30s exceeded)
+2024-06-15 15:02:30 WARN  Connection pool exhausted: 0/20 available
+2024-06-15 15:03:00 ERROR Database query timeout: UPDATE orders SET status = 'pending' (30s exceeded)
+2024-06-15 15:03:30 ERROR Database query timeout: SELECT * FROM orders WHERE id = 9002 (30s exceeded)

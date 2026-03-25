@@ -1,0 +1,5 @@
+2024-06-15 08:00:01 INFO  Worker pool initialized (8 workers)
+2024-06-15 08:01:00 INFO  Job 1001 completed in 230ms
+2024-06-15 08:02:00 INFO  Job 1002 completed in 180ms
+2024-06-15 08:03:00 INFO  Job 1003 completed in 310ms
+2024-06-15 08:04:00 INFO  Queue depth: 0 pending

@@ -1,0 +1,10 @@
+2024-06-15 14:00:01 INFO  Application started
+2024-06-15 14:00:30 WARN  Deprecated API endpoint /v1/users called by client sdk-3.2
+2024-06-15 14:01:00 ERROR Failed to write to cache: Redis connection timeout
+2024-06-15 14:01:30 WARN  Retrying cache write (attempt 2/3)
+2024-06-15 14:02:00 ERROR Failed to write to cache: Redis connection timeout
+2024-06-15 14:02:30 ERROR Request handler failed: null pointer in UserService.GetProfile
+2024-06-15 14:03:00 FATAL panic: nil pointer dereference
+2024-06-15 14:03:00 FATAL goroutine 42 [running]:
+2024-06-15 14:03:01 INFO  Process recovery initiated
+2024-06-15 14:03:30 WARN  Service degraded: cache layer unavailable

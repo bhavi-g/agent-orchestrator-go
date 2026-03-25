@@ -1,0 +1,9 @@
+2024-06-15 11:00:01 INFO  Server started on port 9090
+2024-06-15 11:00:02 INFO  Loading configuration from /etc/app/config.yaml
+2024-06-15 11:01:00 INFO  Request processed: GET /dashboard (200, 35ms)
+2024-06-15 11:02:00 WARN  Memory usage at 78% (3.1GB/4GB)
+2024-06-15 11:02:30 ERROR Out of memory: failed to allocate 512MB for image processing
+2024-06-15 11:02:31 ERROR Out of memory: failed to allocate 512MB for image processing
+2024-06-15 11:02:32 FATAL panic: runtime error: out of memory
+2024-06-15 11:02:32 FATAL goroutine 1 [running]:
+2024-06-15 11:02:33 INFO  Process exited with code 2

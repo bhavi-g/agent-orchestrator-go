@@ -1,0 +1,5 @@
+2024-06-15 12:00:01 INFO  API service started on port 8080
+2024-06-15 12:02:05 ERROR Authentication failed: upstream auth service returned 500
+2024-06-15 12:02:35 ERROR Authentication failed: upstream auth service returned 500
+2024-06-15 12:03:00 ERROR Authentication failed: upstream auth service returned 500
+2024-06-15 12:03:30 WARN  Falling back to cached auth tokens

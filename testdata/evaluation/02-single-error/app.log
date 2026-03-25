@@ -1,0 +1,6 @@
+2024-06-15 09:00:01 INFO  Application started on port 3000
+2024-06-15 09:00:02 INFO  Redis cache connected
+2024-06-15 09:01:00 INFO  Serving request GET /api/products (200 OK, 8ms)
+2024-06-15 09:02:30 ERROR Failed to send email notification: SMTP connection refused
+2024-06-15 09:03:00 INFO  Serving request GET /api/products (200 OK, 10ms)
+2024-06-15 09:04:00 INFO  Background sync completed

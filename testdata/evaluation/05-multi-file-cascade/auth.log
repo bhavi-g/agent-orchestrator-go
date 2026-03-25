@@ -1,0 +1,5 @@
+2024-06-15 12:00:01 INFO  Auth service started
+2024-06-15 12:01:00 INFO  Token issued for user admin@corp.com
+2024-06-15 12:02:00 ERROR Failed to validate token: certificate expired
+2024-06-15 12:02:30 ERROR Failed to validate token: certificate expired
+2024-06-15 12:03:00 WARN  Rate limit approaching for IP 192.168.1.50

@@ -1,0 +1,5 @@
+2024-06-15 15:00:01 INFO  User service started
+2024-06-15 15:01:10 ERROR Database query timeout: SELECT * FROM users WHERE email = 'test@test.com' (30s exceeded)
+2024-06-15 15:02:00 ERROR Database query timeout: SELECT COUNT(*) FROM sessions (30s exceeded)
+2024-06-15 15:02:30 WARN  Health check failed: database unreachable
+2024-06-15 15:03:00 ERROR Database query timeout: SELECT * FROM users WHERE id = 42 (30s exceeded)

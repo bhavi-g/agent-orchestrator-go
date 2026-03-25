@@ -1,0 +1,8 @@
+2024-06-15 08:00:01 INFO  Application started on port 8080
+2024-06-15 08:00:02 INFO  Connected to PostgreSQL database
+2024-06-15 08:00:03 INFO  Health check endpoint registered
+2024-06-15 08:01:00 INFO  Serving request GET /api/users (200 OK, 12ms)
+2024-06-15 08:02:00 INFO  Serving request POST /api/orders (201 Created, 45ms)
+2024-06-15 08:03:00 INFO  Scheduled job cron.cleanup completed successfully
+2024-06-15 08:04:00 INFO  Serving request GET /api/health (200 OK, 2ms)
+2024-06-15 08:05:00 INFO  Connection pool stats: 48/50 available

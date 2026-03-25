@@ -1,0 +1,3 @@
+2024-06-15 12:02:10 ERROR Request to /api/orders failed: 503 Service Unavailable
+2024-06-15 12:02:40 ERROR Request to /api/orders failed: 503 Service Unavailable
+2024-06-15 12:03:10 ERROR Request to /api/users failed: 503 Service Unavailable

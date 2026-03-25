@@ -1,0 +1,6 @@
+2024-06-15 13:00:01 INFO  Monitoring agent started
+2024-06-15 13:01:00 WARN  CPU usage at 85% for 5 minutes
+2024-06-15 13:02:00 WARN  Disk usage at 92% on /dev/sda1
+2024-06-15 13:03:00 WARN  Network latency spike: avg 250ms (threshold 100ms)
+2024-06-15 13:04:00 WARN  Disk usage at 93% on /dev/sda1
+2024-06-15 13:05:00 INFO  Alert sent to ops-team channel

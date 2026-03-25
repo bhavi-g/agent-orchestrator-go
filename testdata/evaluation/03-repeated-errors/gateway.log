@@ -1,0 +1,8 @@
+2024-06-15 10:00:01 INFO  API gateway started
+2024-06-15 10:00:30 ERROR Connection refused: upstream service payment-svc at 10.0.1.5:8080
+2024-06-15 10:01:00 ERROR Connection refused: upstream service payment-svc at 10.0.1.5:8080
+2024-06-15 10:01:30 ERROR Connection refused: upstream service payment-svc at 10.0.1.5:8080
+2024-06-15 10:02:00 ERROR Connection refused: upstream service payment-svc at 10.0.1.5:8080
+2024-06-15 10:02:30 WARN  Circuit breaker opened for payment-svc
+2024-06-15 10:03:00 ERROR Connection refused: upstream service payment-svc at 10.0.1.5:8080
+2024-06-15 10:03:30 INFO  Returning cached response for /api/checkout

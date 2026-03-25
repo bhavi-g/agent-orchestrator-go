@@ -1,0 +1,4 @@
+2024-06-15 14:00:01 INFO  Background worker started
+2024-06-15 14:01:00 WARN  Job queue backlog: 45 pending (threshold: 30)
+2024-06-15 14:02:00 ERROR Job 5001 failed: Redis connection timeout
+2024-06-15 14:03:00 ERROR Job 5002 failed: database query timeout

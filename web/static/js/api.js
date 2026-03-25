@@ -28,7 +28,7 @@ const API = {
     getRunSteps(id)       { return this._get(`/runs/${encodeURIComponent(id)}/steps`); },
     getRunToolCalls(id)   { return this._get(`/runs/${encodeURIComponent(id)}/tools`); },
     createRun(taskId, input) {
-        return this._post('/runs', { task_id: taskId, input: input });
+        return this._post('/runs', { task_id: taskId, input: { log_dir: input } });
     },
     replayRun(id)         { return this._post(`/runs/${encodeURIComponent(id)}/replay`, {}); },
     getMetrics()          { return this._get('/metrics'); },

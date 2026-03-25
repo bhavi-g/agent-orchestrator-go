@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"time"
 
 	"agent-orchestrator/agent"
@@ -164,31 +166,101 @@ func (e *Engine) Execute(
 	var completedSteps []planner.CompletedStep
 	replanCount := 0
 
-	// 3. Execute plan steps sequentially with retry + replan
-	i := 0
-	for i < len(plan.Steps) {
-		step := plan.Steps[i]
-
-		run.CurrentStepIndex = i + len(completedSteps)
+	// 3. Build DAG scheduler and execute steps (parallel when possible)
+	dag, dagErr := newDAGScheduler(plan)
+	if dagErr != nil {
+		now := time.Now()
+		run.Status = agent.AgentRunFailed
+		run.CompletedAt = &now
 		if e.runs != nil {
-			if err := e.runs.Update(run); err != nil {
-				return nil, err
+			_ = e.runs.Update(run)
+		}
+		return &ExecutionResult{
+			RunID:  req.RunID,
+			Status: StatusFailed,
+			Err:    dagErr,
+		}, nil
+	}
+
+	completed := 0
+	var mu sync.Mutex // protects execCtx.Vars, completedSteps, finalOutput
+
+	for completed < dag.Len() {
+		ready := dag.ReadySteps()
+		if len(ready) == 0 {
+			// Should never happen if cycle detection is correct
+			break
+		}
+
+		// Parallel batch: launch all ready steps concurrently.
+		type stepResult struct {
+			idx    int
+			output map[string]any
+			err    error
+		}
+
+		results := make([]stepResult, len(ready))
+		var wg sync.WaitGroup
+
+		for ri, stepIdx := range ready {
+			wg.Add(1)
+
+			go func(ri, stepIdx int) {
+				defer wg.Done()
+
+				step := plan.Steps[stepIdx]
+
+				mu.Lock()
+				run.CurrentStepIndex = stepIdx + len(completedSteps)
+				if e.runs != nil {
+					_ = e.runs.Update(run)
+				}
+				mu.Unlock()
+
+				output, stepErr := e.executeStepWithRetry(ctx, execCtx, step, stepIdx, run, tracker)
+				results[ri] = stepResult{idx: stepIdx, output: output, err: stepErr}
+			}(ri, stepIdx)
+		}
+
+		wg.Wait()
+
+		// Process results: if any step failed, try replan or fail.
+		var firstFailure *stepResult
+		for i := range results {
+			if results[i].err != nil {
+				firstFailure = &results[i]
+				break
 			}
 		}
 
-		// Execute step with automatic retry on failure
-		output, stepErr := e.executeStepWithRetry(ctx, execCtx, step, i, run, tracker)
-		if stepErr != nil {
-			// Check if we should replan instead of failing
+		if firstFailure != nil {
+			failedStep := plan.Steps[firstFailure.idx]
+
 			if e.replanner != nil && replanCount < e.maxReplans {
-				failureType := string(e.classifier.Classify(stepErr))
+				failureType := string(e.classifier.Classify(firstFailure.err))
+
+				// Collect completed steps from successful results in this batch
+				mu.Lock()
+				for _, r := range results {
+					if r.err == nil && r.output != nil {
+						completedSteps = append(completedSteps, planner.CompletedStep{
+							StepIndex: r.idx,
+							AgentID:   plan.Steps[r.idx].AgentID,
+							Output:    r.output,
+						})
+						for k, v := range r.output {
+							execCtx.Vars[k] = v
+						}
+					}
+				}
+				mu.Unlock()
 
 				rctx := planner.ReplanContext{
 					TaskID:          req.TaskID,
 					OriginalPlan:    plan,
-					FailedStepIndex: i,
-					FailedAgentID:   step.AgentID,
-					FailureError:    stepErr.Error(),
+					FailedStepIndex: firstFailure.idx,
+					FailedAgentID:   failedStep.AgentID,
+					FailureError:    firstFailure.err.Error(),
 					FailureType:     failureType,
 					CompletedSteps:  completedSteps,
 					Vars:            execCtx.Vars,
@@ -201,14 +273,23 @@ func (e *Engine) Execute(
 					replanCount++
 					plan = newPlan
 					tracker = newStepAttemptTracker()
-					i = 0
 
-					// Update run with new plan info
+					// Rebuild DAG for the new plan
+					newDAG, dErr := newDAGScheduler(plan)
+					if dErr != nil {
+						return &ExecutionResult{
+							RunID:  req.RunID,
+							Status: StatusFailed,
+							Err:    fmt.Errorf("replan DAG error: %w", dErr),
+						}, nil
+					}
+					dag = newDAG
+					completed = 0
+
 					run.MaxSteps = len(completedSteps) + len(newPlan.Steps)
 					if e.runs != nil {
 						_ = e.runs.Update(run)
 					}
-
 					continue
 				}
 			}
@@ -217,7 +298,7 @@ func (e *Engine) Execute(
 			now := time.Now()
 			state.Status = StatusFailed
 			state.EndedAt = &now
-			state.Error = stepErr.Error()
+			state.Error = firstFailure.err.Error()
 
 			run.Status = agent.AgentRunFailed
 			run.CompletedAt = &now
@@ -228,25 +309,29 @@ func (e *Engine) Execute(
 			return &ExecutionResult{
 				RunID:  req.RunID,
 				Status: StatusFailed,
-				Err:    stepErr,
+				Err:    firstFailure.err,
 			}, nil
 		}
 
-		finalOutput = output
+		// All steps in batch succeeded — merge outputs and advance DAG.
+		mu.Lock()
+		for _, r := range results {
+			finalOutput = r.output
 
-		// Track completed step
-		completedSteps = append(completedSteps, planner.CompletedStep{
-			StepIndex: i,
-			AgentID:   step.AgentID,
-			Output:    output,
-		})
+			completedSteps = append(completedSteps, planner.CompletedStep{
+				StepIndex: r.idx,
+				AgentID:   plan.Steps[r.idx].AgentID,
+				Output:    r.output,
+			})
 
-		// Store step output in execution context
-		for k, v := range output {
-			execCtx.Vars[k] = v
+			for k, v := range r.output {
+				execCtx.Vars[k] = v
+			}
+
+			dag.MarkDone(r.idx)
+			completed++
 		}
-
-		i++
+		mu.Unlock()
 	}
 
 	// Success transition

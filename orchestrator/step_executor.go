@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"agent-orchestrator/agent"
@@ -15,6 +16,7 @@ import (
 
 // stepAttemptTracker tracks attempts for each step
 type stepAttemptTracker struct {
+	mu       sync.Mutex
 	attempts map[int]int // stepIndex -> attempt count
 }
 
@@ -25,11 +27,15 @@ func newStepAttemptTracker() *stepAttemptTracker {
 }
 
 func (t *stepAttemptTracker) incrementAttempt(stepIndex int) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.attempts[stepIndex]++
 	return t.attempts[stepIndex]
 }
 
 func (t *stepAttemptTracker) getAttempt(stepIndex int) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.attempts[stepIndex]
 }
 

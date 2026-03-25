@@ -58,13 +58,23 @@ Rules:
 2. Each step object MUST have an "agent_id" field (string) matching one of the available agents above.
 3. Each step MAY have an "input" field (object) with key-value pairs the agent needs.
 4. Each step MAY have a "metadata" field (object) for extra context.
-5. Order the steps so that later steps can use outputs of earlier steps.
-6. Do NOT include explanation text — return raw JSON only.
+5. Each step MAY have a "step_id" field (string) — a unique short identifier for the step.
+6. Each step MAY have a "depends_on" field (array of step_id strings) listing steps that must complete first.
+7. Steps without "depends_on" (or with an empty array) can run in parallel.
+8. If you use "depends_on" on any step, ALL steps must have a "step_id".
+9. Do NOT include explanation text — return raw JSON only.
 
-Example output:
+Example output (sequential):
 [
   {"agent_id": "agent.read_file", "input": {"path": "/var/log/app.log"}},
   {"agent_id": "agent.summarize", "input": {"focus": "errors"}}
+]
+
+Example output (parallel DAG):
+[
+  {"step_id": "s1", "agent_id": "agent.fetch_logs", "input": {"source": "app"}},
+  {"step_id": "s2", "agent_id": "agent.fetch_metrics", "input": {"source": "app"}},
+  {"step_id": "s3", "agent_id": "agent.analyze", "depends_on": ["s1", "s2"]}
 ]
 `))
 

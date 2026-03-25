@@ -164,9 +164,11 @@ func (p *LLMPlanner) Replan(ctx context.Context, rctx ReplanContext) (*Plan, err
 
 // rawStep is the JSON shape the LLM is expected to produce.
 type rawStep struct {
-	AgentID  string         `json:"agent_id"`
-	Input    map[string]any `json:"input,omitempty"`
-	Metadata map[string]any `json:"metadata,omitempty"`
+	AgentID   string         `json:"agent_id"`
+	Input     map[string]any `json:"input,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+	StepID    string         `json:"step_id,omitempty"`
+	DependsOn []string       `json:"depends_on,omitempty"`
 }
 
 // parsePlanSteps extracts plan steps from the LLM's JSON response,
@@ -197,9 +199,11 @@ func parsePlanSteps(content string, agents []AgentDescriptor) ([]PlanStep, error
 			return nil, fmt.Errorf("step %d: unknown agent_id %q", i, r.AgentID)
 		}
 		steps = append(steps, PlanStep{
-			AgentID:  r.AgentID,
-			Input:    r.Input,
-			Metadata: r.Metadata,
+			AgentID:   r.AgentID,
+			Input:     r.Input,
+			Metadata:  r.Metadata,
+			StepID:    r.StepID,
+			DependsOn: r.DependsOn,
 		})
 	}
 

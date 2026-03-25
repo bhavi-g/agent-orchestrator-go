@@ -166,5 +166,7 @@ var PlanStepSchema = &Schema{
 		{Name: "agent_id", Type: FieldString, Required: true},
 		{Name: "input", Type: FieldObject, Required: false},
 		{Name: "metadata", Type: FieldObject, Required: false},
+		{Name: "step_id", Type: FieldString, Required: false},
+		{Name: "depends_on", Type: FieldArray, Required: false},
 	},
 }

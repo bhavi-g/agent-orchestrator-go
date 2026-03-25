@@ -30,3 +30,19 @@ func agentStepTableSQL() string {
 	);
 	`
 }
+
+func toolCallTableSQL() string {
+	return `
+	CREATE TABLE IF NOT EXISTS tool_calls (
+		tool_call_id TEXT PRIMARY KEY,
+		run_id TEXT NOT NULL,
+		step_id TEXT NOT NULL,
+		tool_name TEXT NOT NULL,
+		input TEXT NOT NULL,
+		output TEXT NOT NULL,
+		status TEXT NOT NULL,
+		started_at DATETIME NOT NULL,
+		finished_at DATETIME
+	);
+	`
+}

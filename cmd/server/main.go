@@ -28,9 +28,10 @@ func main() {
 	}
 	defer repo.Close()
 
-	// SQLite-backed run/step repositories
+	// SQLite-backed run/step/tool-call repositories
 	runRepo := sqlite.NewAgentRunRepository(repo.DB)
 	stepRepo := sqlite.NewAgentStepRepository(repo.DB)
+	toolCallRepo := sqlite.NewToolCallRepository(repo.DB)
 
 	// ---- Orchestrator wiring ----
 	pl := planner.NewDummyPlanner()
@@ -56,9 +57,10 @@ func main() {
 		stepRepo,
 		repairEngine,
 	)
+	engine.SetToolCallRepository(toolCallRepo)
 
 	// ---- HTTP Server ----
-	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo)
+	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
 	router := api.NewRouter(runHandler)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

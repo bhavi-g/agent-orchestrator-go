@@ -35,6 +35,10 @@ func (r *SQLiteRepository) Open() error {
 		return err
 	}
 
+	if _, err := db.Exec(toolCallTableSQL()); err != nil {
+		return err
+	}
+
 	r.DB = db
 	return nil
 }

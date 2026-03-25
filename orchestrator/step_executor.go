@@ -10,6 +10,7 @@ import (
 	"agent-orchestrator/planner"
 	"agent-orchestrator/repair"
 	"agent-orchestrator/retry"
+	"agent-orchestrator/tools"
 )
 
 // stepAttemptTracker tracks attempts for each step
@@ -57,6 +58,15 @@ func (e *Engine) executeStepWithRetry(
 	// Current input for this step (may be modified by repair)
 	currentInput := execCtx.Request.Input
 	currentAgentID := step.AgentID
+
+	// Wrap the tool executor with persistence if a ToolCallRecorder is set.
+	stepExecCtx := *execCtx
+	if e.toolRecorder != nil && execCtx.Tools != nil {
+		stepID := fmt.Sprintf("%s-step-%d", run.RunID, stepIndex)
+		stepExecCtx.Tools = tools.NewPersistingExecutor(
+			execCtx.Tools, e.toolRecorder, run.RunID, stepID,
+		)
+	}
 	
 	for {
 		attemptNum := tracker.incrementAttempt(stepIndex)
@@ -112,7 +122,7 @@ func (e *Engine) executeStepWithRetry(
 		}
 
 		// Execute agent
-		result, err := runAgent(ctx, agt, *execCtx)
+		result, err := runAgent(ctx, agt, stepExecCtx)
 		if err != nil {
 			if e.repairEng == nil {
 				return nil, err

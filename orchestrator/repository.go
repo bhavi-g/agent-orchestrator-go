@@ -12,3 +12,8 @@ type StepRepository interface {
 	Create(step *agent.AgentStep) error
 	GetByRunID(runID string) ([]*agent.AgentStep, error)
 }
+
+type ToolCallRepository interface {
+	Create(tc *agent.ToolCall) error
+	GetByRunID(runID string) ([]*agent.ToolCall, error)
+}

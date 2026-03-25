@@ -21,6 +21,7 @@ type Engine struct {
 	validator    Validator
 	runs         RunRepository
 	steps        StepRepository
+	toolRecorder tools.ToolCallRecorder
 	repairEng    *repair.Engine
 	classifier   *failure.Classifier
 	maxReplans   int
@@ -70,6 +71,11 @@ func (e *Engine) SetMaxReplans(n int) {
 // SetRetryPolicy sets the global default retry policy for all steps.
 func (e *Engine) SetRetryPolicy(p retry.Policy) {
 	e.retryPolicy = p
+}
+
+// SetToolCallRepository enables tool call persistence.
+func (e *Engine) SetToolCallRepository(repo tools.ToolCallRecorder) {
+	e.toolRecorder = repo
 }
 
 func (e *Engine) Execute(

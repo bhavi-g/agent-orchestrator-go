@@ -27,6 +27,10 @@ func NewRouter(rh *handlers.RunHandler) *http.ServeMux {
 			rh.GetRunSteps(w, r)
 			return
 		}
+		if strings.HasSuffix(r.URL.Path, "/tools") {
+			rh.GetRunToolCalls(w, r)
+			return
+		}
 		rh.GetRun(w, r)
 	})
 

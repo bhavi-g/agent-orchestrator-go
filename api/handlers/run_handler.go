@@ -15,9 +15,10 @@ import (
 
 // RunHandler handles HTTP requests for agent runs.
 type RunHandler struct {
-	engine   *orchestrator.Engine
-	runs     storage.AgentRunRepository
-	steps    storage.AgentStepRepository
+	engine    *orchestrator.Engine
+	runs      storage.AgentRunRepository
+	steps     storage.AgentStepRepository
+	toolCalls storage.ToolCallRepository
 }
 
 // NewRunHandler creates a handler wired to the engine and repositories.
@@ -25,8 +26,9 @@ func NewRunHandler(
 	engine *orchestrator.Engine,
 	runs storage.AgentRunRepository,
 	steps storage.AgentStepRepository,
+	toolCalls storage.ToolCallRepository,
 ) *RunHandler {
-	return &RunHandler{engine: engine, runs: runs, steps: steps}
+	return &RunHandler{engine: engine, runs: runs, steps: steps, toolCalls: toolCalls}
 }
 
 // --- Request / Response types ------------------------------------------------
@@ -63,6 +65,19 @@ type StepResponse struct {
 // ErrorResponse is a standard error envelope.
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// ToolCallResponse is the JSON representation of a tool call.
+type ToolCallResponse struct {
+	ToolCallID string     `json:"tool_call_id"`
+	RunID      string     `json:"run_id"`
+	StepID     string     `json:"step_id"`
+	ToolName   string     `json:"tool_name"`
+	Input      string     `json:"input"`
+	Output     string     `json:"output"`
+	Status     string     `json:"status"`
+	StartedAt  time.Time  `json:"started_at"`
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
 }
 
 // --- Handlers ----------------------------------------------------------------
@@ -169,6 +184,44 @@ func (h *RunHandler) GetRunSteps(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// GetRunToolCalls handles GET /runs/:id/tools.
+func (h *RunHandler) GetRunToolCalls(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/runs/")
+	path = strings.TrimSuffix(path, "/tools")
+	runID := path
+	if runID == "" || strings.Contains(runID, "/") {
+		writeError(w, http.StatusBadRequest, "invalid run_id")
+		return
+	}
+
+	if _, err := h.runs.GetByID(runID); err != nil {
+		writeError(w, http.StatusNotFound, "run not found")
+		return
+	}
+
+	if h.toolCalls == nil {
+		writeJSON(w, http.StatusOK, []ToolCallResponse{})
+		return
+	}
+
+	calls, err := h.toolCalls.GetByRunID(runID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to retrieve tool calls")
+		return
+	}
+
+	resp := make([]ToolCallResponse, len(calls))
+	for i, tc := range calls {
+		resp[i] = toToolCallResponse(tc)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // --- Helpers -----------------------------------------------------------------
 
 func extractRunID(path, prefix string) string {
@@ -213,4 +266,18 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, ErrorResponse{Error: msg})
+}
+
+func toToolCallResponse(tc *agent.ToolCall) ToolCallResponse {
+	return ToolCallResponse{
+		ToolCallID: tc.ToolCallID,
+		RunID:      tc.RunID,
+		StepID:     tc.StepID,
+		ToolName:   tc.ToolName,
+		Input:      tc.Input,
+		Output:     tc.Output,
+		Status:     string(tc.Status),
+		StartedAt:  tc.StartedAt,
+		FinishedAt: tc.FinishedAt,
+	}
 }

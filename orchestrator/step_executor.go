@@ -128,7 +128,7 @@ func (e *Engine) executeStepWithRetry(
 		}
 
 		// Execute agent
-		result, err := runAgent(ctx, agt, stepExecCtx)
+		result, err := runAgent(ctx, agt, stepExecCtx, step)
 		if err != nil {
 			if e.repairEng == nil {
 				return nil, err

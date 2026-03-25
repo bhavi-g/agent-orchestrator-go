@@ -34,11 +34,12 @@ func main() {
 	toolCallRepo := sqlite.NewToolCallRepository(repo.DB)
 
 	// ---- Orchestrator wiring ----
-	pl := planner.NewDummyPlanner()
+	pl := planner.NewLogAnalysisPlanner()
 
 	agentRegistry := agent.NewRegistry()
 	agentRegistry.Register("agent.echo", agent.NewEchoAgent())
 	agentRegistry.Register("agent.log_reader", agent.NewLogReaderAgent())
+	agentRegistry.Register("agent.log_analyzer", agent.NewLogAnalyzerAgent())
 
 	// Tools wiring — root directory defaults to current working directory
 	toolRegistry := tools.NewRegistry()
@@ -51,12 +52,12 @@ func main() {
 	repairStrategy := repair.NewSimpleRetryStrategy()
 	repairEngine := repair.NewEngine(repairStrategy, 3)
 
-	// Engine wiring
+	// Engine wiring with report validator
 	engine := orchestrator.NewEngine(
 		pl,
 		agentRegistry,
 		toolExecutor,
-		nil,
+		orchestrator.NewReportValidator(),
 		runRepo,
 		stepRepo,
 		repairEngine,

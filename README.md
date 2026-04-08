@@ -71,20 +71,9 @@ Click **"Try Demo"** to analyze a sample crash scenario — a Go server killed b
 
 ## How It Works
 
-```
-┌─────────────┐     ┌──────────┐     ┌────────────┐     ┌────────────┐
-│  User Input  │────▶│  Planner  │────▶│   Agent    │────▶│  Validator  │
-│  (log path)  │     │ (build    │     │ (execute   │     │ (verify    │
-│              │     │  DAG)     │     │  steps)    │     │  output)   │
-└─────────────┘     └──────────┘     └────────────┘     └────────────┘
-                                           │                    │
-                                           ▼                    ▼
-                                    ┌────────────┐     ┌────────────┐
-                                    │   Tools    │     │  Repair    │
-                                    │ (fs.read,  │     │ (retry,    │
-                                    │  fs.grep)  │     │  replan)   │
-                                    └────────────┘     └────────────┘
-```
+<p align="center">
+  <img src="docs/architecture.png" alt="Architecture Diagram" width="700"/>
+</p>
 
 1. **Plan** — The planner builds a step graph: first scan the directory (`log_reader`), then analyze findings (`log_analyzer`)
 2. **Execute** — Each agent step runs with access to filesystem tools (`fs.list_dir`, `fs.read_file`, `fs.grep_file`)

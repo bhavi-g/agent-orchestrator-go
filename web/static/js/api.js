@@ -40,4 +40,19 @@ const API = {
             return res.ok;
         } catch { return false; }
     },
+
+    async uploadFiles(files) {
+        const fd = new FormData();
+        for (const f of files) fd.append('files', f);
+        const res = await fetch(this.base + '/upload', { method: 'POST', body: fd });
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || `Upload failed: ${res.status}`);
+        }
+        return res.json();
+    },
+
+    async getDemoDir() {
+        return this._get('/demo-dir');
+    },
 };

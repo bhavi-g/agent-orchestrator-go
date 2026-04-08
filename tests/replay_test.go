@@ -308,7 +308,7 @@ func TestReplayHTTP_PostReplay(t *testing.T) {
 
 	// HTTP test server.
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(rh)
+	router := api.NewRouter(rh, nil)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

@@ -321,7 +321,7 @@ func TestAPI_GetRunToolCalls_Success(t *testing.T) {
 	engine := orchestrator.NewEngine(pl, reg, toolExec, nil, runRepo, stepRepo, nil)
 
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(rh)
+	router := api.NewRouter(rh, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -363,7 +363,7 @@ func TestAPI_GetRunToolCalls_RunNotFound(t *testing.T) {
 	engine := orchestrator.NewEngine(pl, reg, toolExec, nil, runRepo, stepRepo, nil)
 
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(rh)
+	router := api.NewRouter(rh, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -394,7 +394,7 @@ func TestAPI_GetRunToolCalls_NoRepo(t *testing.T) {
 
 	// nil toolCallRepo
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, nil)
-	router := api.NewRouter(rh)
+	router := api.NewRouter(rh, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

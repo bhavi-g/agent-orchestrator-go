@@ -5,11 +5,14 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"agent-orchestrator/agent"
 	"agent-orchestrator/api"
 	"agent-orchestrator/api/handlers"
 	"agent-orchestrator/config"
+	"agent-orchestrator/demo"
 	"agent-orchestrator/orchestrator"
 	"agent-orchestrator/planner"
 	"agent-orchestrator/repair"
@@ -19,9 +22,18 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("config/local.yaml")
+	cfgPath := os.Getenv("CONFIG_PATH")
+	if cfgPath == "" {
+		cfgPath = "config/local.yaml"
+	}
+	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
+	}
+
+	// Allow overriding sqlite path via env for deployed environments
+	if dbPath := os.Getenv("SQLITE_PATH"); dbPath != "" {
+		cfg.Storage.SQLitePath = dbPath
 	}
 
 	repo := sqlite.New(cfg.Storage.SQLitePath)
@@ -72,10 +84,22 @@ func main() {
 	engine.SetToolCallReader(toolCallRepo)
 
 	// ---- HTTP Server ----
+	// Upload directory (for deployed environments)
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = filepath.Join(os.TempDir(), "agent-orchestrator-uploads")
+	}
+	_ = os.MkdirAll(uploadDir, 0o755)
+
+	// Extract embedded demo logs on startup
+	demoDir := handlers.GetDemoDir(uploadDir)
+	extractDemoLogs(demoDir)
+
 	runHandler := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
+	uploadHandler := handlers.NewUploadHandler(uploadDir)
 	metricsEval := orchestrator.NewMetricsEvaluator(runRepo, stepRepo, toolCallRepo)
 	metricsHandler := handlers.NewMetricsHandler(metricsEval, runRepo)
-	router := api.NewRouter(runHandler, metricsHandler)
+	router := api.NewRouter(runHandler, uploadHandler, metricsHandler)
 
 	// Serve embedded web dashboard at /
 	staticFS, _ := fs.Sub(web.Static, "static")
@@ -86,4 +110,25 @@ func main() {
 	if err := http.ListenAndServe(addr, router); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// extractDemoLogs writes the embedded demo log files to disk so the agent can read them.
+func extractDemoLogs(dir string) {
+	_ = os.MkdirAll(dir, 0o755)
+	entries, err := demo.Logs.ReadDir("logs")
+	if err != nil {
+		log.Printf("warning: could not read embedded demo logs: %v", err)
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := demo.Logs.ReadFile("logs/" + e.Name())
+		if err != nil {
+			continue
+		}
+		_ = os.WriteFile(filepath.Join(dir, e.Name()), data, 0o644)
+	}
+	log.Printf("demo logs extracted to %s", dir)
 }

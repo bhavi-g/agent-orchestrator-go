@@ -1,0 +1,8 @@
+[2026-04-08 09:01:50] CRITICAL: PostgreSQL connection pool exhausted (max=25, active=25, waiting=142)
+[2026-04-08 09:01:51] ERROR: query timeout after 30s: SELECT * FROM orders WHERE status='pending' ORDER BY created_at
+[2026-04-08 09:01:52] ERROR: failed to commit transaction: connection reset by peer
+[2026-04-08 09:01:55] WARN: retrying database connection (attempt 3/5)
+[2026-04-08 09:02:00] ERROR: redis ETIMEDOUT: connect ETIMEDOUT 127.0.0.1:6379
+[2026-04-08 09:02:03] ERROR: cache fallback failed — returning stale data
+[2026-04-08 09:02:05] CRITICAL: health check failed - database unreachable
+[2026-04-08 09:02:10] FATAL: process received SIGKILL (OOM killer)

@@ -369,7 +369,7 @@ func TestMetricsHTTP_GetMetrics(t *testing.T) {
 	eval := orchestrator.NewMetricsEvaluator(runRepo, stepRepo, toolCallRepo)
 	mh := handlers.NewMetricsHandler(eval, runRepo)
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(rh, mh)
+	router := api.NewRouter(rh, nil, mh)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
@@ -423,7 +423,7 @@ func TestMetricsHTTP_NotFound(t *testing.T) {
 	eval := orchestrator.NewMetricsEvaluator(runRepo, stepRepo, toolCallRepo)
 	mh := handlers.NewMetricsHandler(eval, runRepo)
 	rh := handlers.NewRunHandler(nil, runRepo, stepRepo, toolCallRepo)
-	router := api.NewRouter(rh, mh)
+	router := api.NewRouter(rh, nil, mh)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

@@ -92,7 +92,7 @@ func newTestServer() (*httptest.Server, *memRunRepo, *memStepRepo) {
 
 	engine := orchestrator.NewEngine(pl, reg, toolExec, nil, runRepo, stepRepo, nil)
 	rh := handlers.NewRunHandler(engine, runRepo, stepRepo, nil)
-	router := api.NewRouter(rh)
+	router := api.NewRouter(rh, nil)
 
 	return httptest.NewServer(router), runRepo, stepRepo
 }

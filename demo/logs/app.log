@@ -1,0 +1,19 @@
+2026-04-08T09:00:01Z INFO  server starting on :8080
+2026-04-08T09:00:02Z INFO  connected to postgres at localhost:5432
+2026-04-08T09:00:03Z INFO  loading cache from redis
+2026-04-08T09:00:04Z INFO  registered 12 API routes
+2026-04-08T09:00:05Z INFO  health check endpoint ready
+2026-04-08T09:01:15Z WARN  high memory usage: 1.8GB / 2.0GB
+2026-04-08T09:01:30Z WARN  GC pause 320ms — heap growing
+2026-04-08T09:01:44Z WARN  GC pause 450ms
+2026-04-08T09:02:10Z ERROR goroutine 42 [running]:
+runtime.throw({0x1a2b3c, 0x1d})
+	/usr/local/go/src/runtime/panic.go:1077 +0x48
+runtime.goPanicIndex(0x5, 0x3)
+	/usr/local/go/src/runtime/panic.go:114 +0x44
+main.processOrders(0xc0001a2000)
+	/app/server/handlers/orders.go:87 +0x2f4
+main.handleRequest(0xc000182000)
+	/app/server/main.go:142 +0x1a8
+2026-04-08T09:02:10Z FATAL out of memory: cannot allocate 256MB
+2026-04-08T09:02:10Z FATAL server crashed - exit code 137 (OOM killed)

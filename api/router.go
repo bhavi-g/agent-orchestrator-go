@@ -8,7 +8,7 @@ import (
 )
 
 // NewRouter builds an http.ServeMux with all API routes.
-func NewRouter(rh *handlers.RunHandler, mh ...*handlers.MetricsHandler) *http.ServeMux {
+func NewRouter(rh *handlers.RunHandler, uh *handlers.UploadHandler, mh ...*handlers.MetricsHandler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// POST /runs
@@ -48,6 +48,12 @@ func NewRouter(rh *handlers.RunHandler, mh ...*handlers.MetricsHandler) *http.Se
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// File upload
+	if uh != nil {
+		mux.HandleFunc("/upload", uh.Upload)
+		mux.HandleFunc("/demo-dir", uh.DemoDir)
+	}
 
 	// Metrics: GET /metrics, GET /metrics/<runID>
 	if len(mh) > 0 && mh[0] != nil {
